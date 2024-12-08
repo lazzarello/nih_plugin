@@ -5,4 +5,4 @@
 # name = "Human Readable Plugin Name"  # defaults to <package_name>
 
 [nih_plugin]
-name = "Nih Plugin"
+name = "Gain and Delay NIH Plugin"

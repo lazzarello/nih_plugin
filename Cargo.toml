@@ -1,11 +1,11 @@
 [package]
 name = "nih_plugin"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Lee Azzarello <lee@rockingtiger.com>"]
 license = "GPL-3.0-or-later"
-homepage = "https://example.com"
-description = "An example plugin, passes analog in to analog out"
+homepage = "https://blog.griftmarket.com"
+description = "Passes input to output"
 
 [workspace]
 members = ["xtask"]
