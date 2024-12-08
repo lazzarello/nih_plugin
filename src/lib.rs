@@ -1,5 +1,5 @@
 use nih_plug::prelude::*;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 // This is a shortened version of the gain example with most comments removed, check out
 // https://github.com/robbert-vdh/nih-plug/blob/master/plugins/examples/gain/src/lib.rs to get
@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 struct NihPlugin {
     params: Arc<NihPluginParams>,
+    delay_buffer: VecDeque<f32>,
 }
 
 #[derive(Params)]
@@ -17,12 +18,15 @@ struct NihPluginParams {
     /// gain parameter is stored as linear gain while the values are displayed in decibels.
     #[id = "gain"]
     pub gain: FloatParam,
+    #[id = "delay"]
+    pub delay: IntParam,
 }
 
 impl Default for NihPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(NihPluginParams::default()),
+            delay_buffer: VecDeque::new(),
         }
     }
 }
@@ -53,6 +57,14 @@ impl Default for NihPluginParams {
             // `.with_step_size(0.1)` function to get internal rounding.
             .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
             .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+            delay: IntParam::new(
+                "Delay",
+                0,
+                IntRange::Linear { 
+                    min: 0,
+                    max: 1000,
+                },
+            ),
         }
     }
 }
@@ -122,12 +134,22 @@ impl Plugin for NihPlugin {
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        for channel_samples in buffer.iter_samples() {
-            // Smoothing is optionally built into the parameters themselves
-            let gain = self.params.gain.smoothed.next();
+        let sample_rate = 48000;
+        let delay_samples = self.params.delay.value() as f32 * sample_rate as f32 / 1000.0;
 
+        if self.delay_buffer.len() < delay_samples as usize {
+            self.delay_buffer.resize(delay_samples as usize, 0.0);
+        }
+
+        for channel_samples in buffer.iter_samples() {
             for sample in channel_samples {
-                *sample *= gain;
+                let delayed_sample = self.delay_buffer.pop_front().unwrap_or(0.0);
+
+                self.delay_buffer.push_back(*sample);
+                // Smoothing is optionally built into the parameters themselves
+                let gain = self.params.gain.smoothed.next();
+                // do something with the delay value in milliseconds here
+                *sample = delayed_sample * gain;
             }
         }
 
